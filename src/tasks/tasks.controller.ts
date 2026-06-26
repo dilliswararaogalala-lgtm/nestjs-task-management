@@ -42,11 +42,12 @@ export class TasksController {
     return this.tasksService.createTask(createTaskDto);
   }
 
-  @Patch('/:id')
+  @Patch('/:id/status')
   updateTask(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
   ): Task {
-    return this.tasksService.updateTask(id, updateTaskDto);
+    const { status } = updateTaskDto;
+    return this.tasksService.updateTask(id, status);
   }
 }

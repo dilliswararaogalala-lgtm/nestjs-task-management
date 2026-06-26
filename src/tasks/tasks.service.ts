@@ -3,7 +3,6 @@ import { Task, TaskStatus } from './task.model';
 import { v4 as uuid } from 'uuid';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
@@ -29,17 +28,15 @@ export class TasksService {
   }
 
   getTaskById(id: string): Task {
-    return (
-      this.tasks.find((task) => task.id === id) || {
-        id: 'not found',
-        title: 'not found',
-        description: 'not found',
-        status: TaskStatus.OPEN,
-      }
-    );
+    const foundedTask = this.tasks.find((task) => task.id === id);
+    if (!foundedTask) {
+      throw new NotFoundException(`Task with id "${id}" not found`);
+    }
+    return foundedTask;
   }
 
   deleteTask(id: string): void {
+    this.getTaskById(id); // Check if the task exists, will throw NotFoundException if not found
     this.tasks = this.tasks.filter((task) => task.id !== id);
   }
 
@@ -55,12 +52,9 @@ export class TasksService {
     return task;
   }
 
-  updateTask(id: string, updateTaskDto: UpdateTaskDto): Task {
-    const task = this.tasks.find((task) => task.id === id);
-    if (!task) {
-      throw new NotFoundException(`Task with id "${id}" not found`);
-    }
-    Object.assign(task, updateTaskDto);
+  updateTask(id: string, status: TaskStatus): Task {
+    const task = this.getTaskById(id);
+    task.status = status;
     return task;
   }
 }
