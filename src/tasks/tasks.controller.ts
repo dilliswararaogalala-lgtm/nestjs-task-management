@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Logger,
   Param,
   Patch,
@@ -10,10 +11,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import type { Task } from './task.model';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
+import { Task } from './dto/task.entity';
 
 @Controller('tasks')
 export class TasksController {
@@ -22,31 +23,38 @@ export class TasksController {
   constructor(private tasksService: TasksService) {}
 
   @Get()
-  getAllTasks(@Query() filterDto: GetTasksFilterDto): Task[] {
+  getAllTasks(@Query() filterDto: GetTasksFilterDto): Promise<Task[]> {
+    this.logger.verbose(`GET /tasks - filters: ${JSON.stringify(filterDto)}`);
     return this.tasksService.getAllTasks(filterDto);
   }
 
   @Get('/:id')
-  getTaskById(@Param('id') id: string): Task {
+  getTaskById(@Param('id') id: string): Promise<Task> {
+    this.logger.verbose(`GET /tasks/${id}`);
     return this.tasksService.getTaskById(id);
   }
 
-  @Delete('/:id')
-  deleteTask(@Param('id') id: string): void {
-    this.tasksService.deleteTask(id);
+  @Post()
+  createTask(@Body() createTaskDto: CreateTaskDto): Promise<Task> {
+    this.logger.verbose(`POST /tasks - body: ${JSON.stringify(createTaskDto)}`);
+    return this.tasksService.createTask(createTaskDto);
   }
 
-  @Post()
-  createTasks(@Body() createTaskDto: CreateTaskDto): Task {
-    const { title, description } = createTaskDto;
-    return this.tasksService.createTask(createTaskDto);
+  @Delete('/:id')
+  @HttpCode(204)
+  deleteTask(@Param('id') id: string): Promise<void> {
+    this.logger.verbose(`DELETE /tasks/${id}`);
+    return this.tasksService.deleteTask(id);
   }
 
   @Patch('/:id/status')
   updateTask(
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
-  ): Task {
+  ): Promise<Task> {
+    this.logger.verbose(
+      `PATCH /tasks/${id}/status - body: ${JSON.stringify(updateTaskDto)}`,
+    );
     const { status } = updateTaskDto;
     return this.tasksService.updateTask(id, status);
   }

@@ -1,60 +1,46 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Task, TaskStatus } from './task.model';
-import { v4 as uuid } from 'uuid';
+import { TaskStatus } from './task-status.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
+import { TaskRepository } from './dto/task.repository';
+import { Task } from './dto/task.entity';
 
 @Injectable()
 export class TasksService {
-  private tasks: Task[] = [];
+  constructor(private taskRepository: TaskRepository) {}
 
-  getAllTasks(filterDto?: GetTasksFilterDto): Task[] {
-    let tasks = this.tasks;
-
-    if (filterDto?.status) {
-      tasks = tasks.filter((task) => task.status === filterDto.status);
-    }
-
-    if (filterDto?.search) {
-      const search = filterDto.search.toLowerCase();
-      tasks = tasks.filter(
-        (task) =>
-          task.title.toLowerCase().includes(search) ||
-          task.description.toLowerCase().includes(search),
-      );
-    }
-
-    return tasks;
+  getAllTasks(filterDto: GetTasksFilterDto): Promise<Task[]> {
+    return this.taskRepository.getTasks(filterDto);
   }
 
-  getTaskById(id: string): Task {
-    const foundedTask = this.tasks.find((task) => task.id === id);
-    if (!foundedTask) {
+  async getTaskById(id: string): Promise<Task> {
+    const found = await this.taskRepository.findOne({ where: { id } });
+    if (!found) {
       throw new NotFoundException(`Task with id "${id}" not found`);
     }
-    return foundedTask;
+    return found;
   }
 
-  deleteTask(id: string): void {
-    this.getTaskById(id); // Check if the task exists, will throw NotFoundException if not found
-    this.tasks = this.tasks.filter((task) => task.id !== id);
-  }
-
-  createTask(createTaskDto: CreateTaskDto): Task {
+  async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
     const { title, description } = createTaskDto;
-    const task: Task = {
-      id: uuid(),
+    const task = this.taskRepository.create({
       title,
       description,
       status: TaskStatus.OPEN,
-    };
-    this.tasks.push(task);
-    return task;
+    });
+    return this.taskRepository.save(task);
   }
 
-  updateTask(id: string, status: TaskStatus): Task {
-    const task = this.getTaskById(id);
+  async deleteTask(id: string): Promise<void> {
+    const result = await this.taskRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Task with id "${id}" not found`);
+    }
+  }
+
+  async updateTask(id: string, status: TaskStatus): Promise<Task> {
+    const task = await this.getTaskById(id);
     task.status = status;
-    return task;
+    return this.taskRepository.save(task);
   }
 }
